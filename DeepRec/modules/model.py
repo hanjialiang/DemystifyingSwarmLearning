@@ -7,9 +7,9 @@ from modules.optimizer import Optimizer
 from modules.loss import LossFunction
 from modules.layer import GRU
 import modules.evaluate as E
-from modules.data import SessionDataset, SessionDataLoader
-import distiller
-import ipdb
+from modules.data import SessionDataLoader
+#import distiller
+#import ipdb
 import math
 
 
@@ -74,7 +74,7 @@ class GRU4REC:
         if self.compress:
             # Create a CompressionScheduler and configure it from a YAML schedule file
             source = self.compress
-            self.compression_scheduler = distiller.config.file_config(self.gru, None, self.compress)
+            #self.compression_scheduler = distiller.config.file_config(self.gru, None, self.compress)
         
         self.optimizer = Optimizer(self.gru.parameters(),
                                    optimizer_type=optimizer_type,
@@ -94,7 +94,7 @@ class GRU4REC:
         self.time_sort = time_sort
         
         
-    def run_epoch(self, dataset, k=20, training=True, compression_scheduler=None, epoch=0):
+    def run_epoch(self, dataset, callback, k=20, training=True, compression_scheduler=None, epoch=0):
         """ Run a single training epoch """
         start_time = time.time()
         
@@ -118,7 +118,7 @@ class GRU4REC:
         # Start the training loop
         loader = SessionDataLoader(dataset, batch_size=self.batch_size)
         batch_id = 0
-        steps_per_epoch = math.ceil(len(dataset.items)/self.batch_size)
+        #steps_per_epoch = math.ceil(len(dataset.items)/self.batch_size)
 
         for input, target, mask in loader:
             batch_id = batch_id + 1
@@ -126,8 +126,8 @@ class GRU4REC:
             target = target.to(device)
             # reset the hidden states if some sessions have just terminated
             hidden = reset_hidden(hidden, mask).detach()
-            if compression_scheduler:
-                compression_scheduler.on_minibatch_begin(epoch, minibatch_id=batch_id, minibatches_per_epoch=steps_per_epoch)
+            #if compression_scheduler:
+            #    compression_scheduler.on_minibatch_begin(epoch, minibatch_id=batch_id, minibatches_per_epoch=steps_per_epoch)
             # Go through the GRU layer
             logit, hidden = self.gru(input, target, hidden)
             # Output sampling
@@ -145,16 +145,17 @@ class GRU4REC:
                     p.grad.data.clamp_(max=self.clip_grad)
             # Mini-batch GD
             if training:
-                if compression_scheduler:
-                    # Before running the backward phase, we allow the scheduler to modify the loss
-                    # (e.g. add regularization loss)
-                    loss = compression_scheduler.before_backward_pass(epoch, minibatch_id=batch_id, minibatches_per_epoch=steps_per_epoch, loss=loss, return_loss_components=False)
-                # Backprop
+                #if compression_scheduler:
+                #    # Before running the backward phase, we allow the scheduler to modify the loss
+                #    # (e.g. add regularization loss)
+                #    loss = compression_scheduler.before_backward_pass(epoch, minibatch_id=batch_id, minibatches_per_epoch=steps_per_epoch, loss=loss, return_loss_components=False)
+                ## Backprop
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad() # flush the gradient after the optimization
-            if compression_scheduler:
-                compression_scheduler.on_minibatch_end(epoch, minibatch_id=batch_id, minibatches_per_epoch=steps_per_epoch)
+                callback.on_batch_end()
+            #if compression_scheduler:
+            #    compression_scheduler.on_minibatch_end(epoch, minibatch_id=batch_id, minibatches_per_epoch=steps_per_epoch)
 
         results = dict()
         #ipdb.set_trace()
@@ -171,7 +172,7 @@ class GRU4REC:
         return results
     
     
-    def train(self, dataset, k=20, n_epochs=20, save_dir='./models', save=True, model_name='GRU4REC'):
+    def train(self, dataset, k=20, n_epochs=20, save_dir='./models', save=True, model_name='GRU4REC', swarmCallback=None):
         """
         Train the GRU4REC model on a pandas dataframe for several training epochs,
         and store the intermediate models to the user-specified directory.
@@ -183,18 +184,20 @@ class GRU4REC:
         """
         print(f'Training {model_name}...')
         for epoch in range(n_epochs):
-            if self.compression_scheduler:
-                self.compression_scheduler.on_epoch_begin(epoch)
-            results = self.run_epoch(dataset, k=k, training=True, compression_scheduler=self.compression_scheduler, epoch=epoch)
+            #if self.compression_scheduler:
+            #    self.compression_scheduler.on_epoch_begin(epoch)
+            results = self.run_epoch(dataset, callback=swarmCallback, k=k, training=True, compression_scheduler=self.compression_scheduler, epoch=epoch)
             results = [f'{k}:{v:.3f}' for k, v in results.items()]
             print(f'epoch:{epoch+1:2d}/{"/".join(results)}')
+    
+            swarmCallback.on_epoch_end(epoch)
             
-            t, total = distiller.weights_sparsity_tbl_summary(self.gru, return_total_sparsity=True)
-            print("\nParameters:\n" + str(t))
-            print('Total sparsity: {:0.2f}\n'.format(total))
+            #t, total = distiller.weights_sparsity_tbl_summary(self.gru, return_total_sparsity=True)
+            #print("\nParameters:\n" + str(t))
+            #print('Total sparsity: {:0.2f}\n'.format(total))
             
-            if self.compression_scheduler:
-                self.compression_scheduler.on_epoch_end(epoch)
+            #if self.compression_scheduler:
+            #    self.compression_scheduler.on_epoch_end(epoch)
             
             # Store the intermediate model
             if save:
@@ -202,7 +205,6 @@ class GRU4REC:
                 if not save_dir.exists(): save_dir.mkdir()
                 model_fname = f'{model_name}_{self.loss_type}_{self.optimizer_type}_{self.lr}_epoch{epoch+1:d}'
                 torch.save(self.gru.state_dict(), save_dir/model_fname)
-    
 
     def test(self, dataset, k=20):
         """ Model evaluation
@@ -219,5 +221,8 @@ class GRU4REC:
         results = self.run_epoch(dataset, k=k, training=False)
         results = [f'{k}:{v:.3f}' for k, v in results.items()]
         print(f'Test result: {"/".join(results)}')
+
+    def state_dict(self, **kwargs):
+        return self.gru.state_dict(**kwargs)
     
 

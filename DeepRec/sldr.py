@@ -1,128 +1,96 @@
-import datetime
+#import datetime
 import numpy as np
 import os
 from swarm import SwarmCallback
-import time
+#import time
 import torch 
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import pandas as pd
+from modules.data import SessionDataset
+from modules.model import GRU4REC
 
-import pdb
 default_max_epochs = 5
 default_min_peers = 2
 # maxEpochs = 2
-trainPrint = True
 # tell swarm after how many batches
 # should it Sync. We are not doing 
 # adaptiveRV here, its a simple and quick demo run
-swSyncInterval = 128 
-
-class mnistNet(nn.Module):
-    def __init__(self):
-        super(mnistNet, self).__init__()
-        self.dense = nn.Linear(784, 512)
-        self.dropout = nn.Dropout(0.2)
-        self.dense1 = nn.Linear(512, 10)
+swSyncInterval = 1
         
-    def forward(self, x):
-        x = torch.flatten(x, 1)        
-        x = self.dense(x)
-        x = F.relu(x)
-        x = self.dropout(x)
-        x = self.dense1(x)
-        output = F.log_softmax(x, dim=1)
-        return output
-        
-def loadData(dataDir):
+def loadData(dataDir, trainName='train.csv', testName='test.csv', itemmapName='itemmap.csv'):
     # load data from npz format to numpy 
-    path = os.path.join(dataDir,'mnist.npz')
-    with np.load(path) as f:
-        xTrain, yTrain = f['x_train'], f['y_train']
-        xTest, yTest = f['x_test'], f['y_test']
-        xTrain, xTest = xTrain / 255.0, xTest / 255.0        
-        
-    # transform numpy to torch.Tensor
-    xTrain, yTrain, xTest, yTest = map(torch.tensor, (xTrain.astype(np.float32), 
-                                                      yTrain.astype(np.int_), 
-                                                      xTest.astype(np.float32),
-                                                      yTest.astype(np.int_)))    
-    # convert torch.Tensor to a dataset
-    yTrain = yTrain.type(torch.LongTensor)
-    yTest = yTest.type(torch.LongTensor)
-    trainDs = torch.utils.data.TensorDataset(xTrain,yTrain)
-    testDs = torch.utils.data.TensorDataset(xTest,yTest)
-    return trainDs, testDs
+    itemmap = pd.read_csv(os.path.join(dataDir,itemmapName))
+    train_dataset = SessionDataset(path=os.path.join(dataDir,trainName), itemmap=itemmap)
+    test_dataset = SessionDataset(path=os.path.join(dataDir,testName), itemmap=itemmap)
     
-def doTrainBatch(model,device,trainLoader,optimizer,epoch,swarmCallback):
-    model.train()
-    for batchIdx, (data, target) in enumerate(trainLoader):
-        data, target = data.to(device), target.to(device)
-        optimizer.zero_grad()
-        output = model(data)
-        loss = F.nll_loss(output, target)
-        loss.backward()
-        optimizer.step()
-        if trainPrint and batchIdx % 100 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                  epoch, batchIdx * len(data), len(trainLoader.dataset),
-                  100. * batchIdx / len(trainLoader), loss.item()))
-        # Swarm Learning Interface
-        if swarmCallback is not None:
-            swarmCallback.on_batch_end()        
-
-def test(model, device, testLoader):
-    model.eval()
-    testLoss = 0
-    correct = 0
-    with torch.no_grad():
-        for data, target in testLoader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            testLoss += F.nll_loss(output, target, reduction='sum').item()  # sum up batch loss
-            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
-
-    testLoss /= len(testLoader.dataset)
-
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        testLoss, correct, len(testLoader.dataset),
-        100. * correct / len(testLoader.dataset)))    
+    return train_dataset, test_dataset   
 
 def main():
     dataDir = os.getenv('DATA_DIR', './data')
     modelDir = os.getenv('MODEL_DIR', './model')
     max_epochs = int(os.getenv('MAX_EPOCHS', str(default_max_epochs)))
     min_peers = int(os.getenv('MIN_PEERS', str(default_min_peers)))
-    batchSz = 128 # this gives 97% accuracy on CPU
-    trainDs, testDs = loadData(dataDir)
+    train_dataset, test_dataset = loadData(dataDir, trainName='small.csv')
+
+    #Init some parameters
+    input_size = len(train_dataset.items)
+    if_embedding = False
+    embedding_size = 16384
+    hidden_size = 100
+    num_layers = 1
+    output_size = input_size
+    batch_size = 50
+    optimizer_type = 'Adagrad'
+    lr = .01
+    weight_decay = 0
+    momentum = 0
+    eps = 1e-6
+    loss_types = ['CrossEntropy','BPR','TOP1']
+    n_epochs = int(max_epochs)
+    use_cuda = torch.cuda.is_available()
+    cuda_id = 0
+    loss_type = 'CrossEntropy'
     useCuda = torch.cuda.is_available()
     device = torch.device("cuda" if useCuda else "cpu")  
-    model = mnistNet().to(device)
-    model_name = 'mnist_pyt'
-    opt = optim.Adam(model.parameters())
-    trainLoader = torch.utils.data.DataLoader(trainDs,batch_size=batchSz)
-    testLoader = torch.utils.data.DataLoader(testDs,batch_size=batchSz)
-    
+    print('#'*10, "input_size:", input_size)
+    print('#'*10, "output_size:", output_size)
+    model = GRU4REC(input_size, if_embedding, embedding_size, hidden_size, output_size,
+                num_layers=num_layers,
+                batch_size=batch_size,
+                optimizer_type=optimizer_type,
+                lr=lr,
+                weight_decay=weight_decay,
+                momentum=momentum,
+                eps=eps,
+                loss_type=loss_type,
+                use_cuda=use_cuda,
+                cuda_id=cuda_id)
+
+    model_name = 'GRU4REC'
+
+    print('#'*10 , 'A'*5, '#'*10)
+
     # Create Swarm callback
-    swarmCallback = None
     swarmCallback = SwarmCallback(sync_interval=swSyncInterval,
                                   min_peers=min_peers,
-                                  val_data=testDs,
-                                  val_batch_size=batchSz,
-                                  model_name=model_name,
+                                  val_data=test_dataset,
+                                  val_batch_size=batch_size,
+                                  model_name=model_name,use_adaptive_sync=False,
                                   model=model)
     # initalize swarmCallback and do first sync 
+    print('#'*10 , 'B'*5, '#'*10)
     swarmCallback.on_train_begin()
-        
-    for epoch in range(1, max_epochs + 1):
-        doTrainBatch(model,device,trainLoader,opt,epoch,swarmCallback)      
-        test(model,device,testLoader)
-        swarmCallback.on_epoch_end(epoch)
+    print('#'*10 , 'C'*5, '#'*10)
 
+    model.train(train_dataset, n_epochs=n_epochs, model_name=model_name, save=False, swarmCallback=swarmCallback)
+    print('#'*10 , 'D'*5, '#'*10)
+    
     # handles what to do when training ends        
     swarmCallback.on_train_end()
-
+    print('#'*10 , 'E'*5, '#'*10)
+    
     # Save model and weights
     model_path = os.path.join(modelDir, model_name, 'saved_model.pt')
     # Pytorch model save function expects the directory to be created before hand.
@@ -131,4 +99,4 @@ def main():
     print('Saved the trained model!')
   
 if __name__ == '__main__':
-  main()
+    main()
