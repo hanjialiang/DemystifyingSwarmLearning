@@ -1,0 +1,10 @@
+**/data
+__pycache__
+.ipynb_checkpoints
+*.log
+*.h5
+DeepSense/model
+
+# for symbol link
+UBDTR
+swarm-learning
