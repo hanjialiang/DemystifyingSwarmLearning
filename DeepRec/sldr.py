@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import pandas as pd
 from modules.data import SessionDataset
 from modules.model import GRU4REC
 
@@ -18,10 +19,11 @@ default_min_peers = 2
 # adaptiveRV here, its a simple and quick demo run
 swSyncInterval = 1
         
-def loadData(dataDir, trainName='train.csv', testName='test.csv'):
+def loadData(dataDir, trainName='train.csv', testName='test.csv', itemmapName='itemmap.csv'):
     # load data from npz format to numpy 
-    train_dataset = SessionDataset(path=os.path.join(dataDir,trainName))
-    test_dataset = SessionDataset(path=os.path.join(dataDir,testName), itemmap=train_dataset.itemmap)
+    itemmap = pd.read_csv(os.path.join(dataDir,itemmapName))
+    train_dataset = SessionDataset(path=os.path.join(dataDir,trainName), itemmap=itemmap)
+    test_dataset = SessionDataset(path=os.path.join(dataDir,testName), itemmap=itemmap)
     
     return train_dataset, test_dataset   
 
@@ -52,6 +54,8 @@ def main():
     loss_type = 'CrossEntropy'
     useCuda = torch.cuda.is_available()
     device = torch.device("cuda" if useCuda else "cpu")  
+    print('#'*10, "input_size:", input_size)
+    print('#'*10, "output_size:", output_size)
     model = GRU4REC(input_size, if_embedding, embedding_size, hidden_size, output_size,
                 num_layers=num_layers,
                 batch_size=batch_size,

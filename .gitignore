@@ -8,3 +8,4 @@ DeepSense/model
 # for symbol link
 UBDTR
 swarm-learning
+*.pyc
