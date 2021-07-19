@@ -41,7 +41,7 @@ Swarm Learning (SL) is a newly emerging distributed machine learning paradigm fo
 1. Accuracy
 2. Time consuming
 3. Computation resource consuming
-4. Communication overhead
+4. Communication overhead (optional)
 
 ## RQ2 What's the applicability of SL?
 
@@ -54,6 +54,7 @@ Swarm Learning (SL) is a newly emerging distributed machine learning paradigm fo
 1. Unbalanced labeled classes in each node
 2. Unbalanced samples among swarm nodes
 3. Individualized or differentiated requirements of edge nodes
+4. Affect of evil nodes
 
 
 
