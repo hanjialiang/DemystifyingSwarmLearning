@@ -30,7 +30,9 @@ import tensorflow as tf
 import tensorflow.keras as keras
 from os.path import join as ospj
 import os
-from swarm import SwarmCallback
+from datetime import datetime
+
+SWARM_LEARNING = os.getenv('SLNUM') is not None
 
 print("LISTDIR:::::",os.listdir('.'))
 print("ENV:::::::::",os.getenv('DATA_DIR', './data'))
@@ -42,7 +44,7 @@ if gpus:
     try:
         # Currently, memory growth needs to be the same across GPUs
         for gpu in gpus:
-            tf.config.experimental.set_virtual_device_configuration(gpu, [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2048+1024+512)])
+            tf.config.experimental.set_virtual_device_configuration(gpu, [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=4096)])
         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
     except RuntimeError as e:
@@ -89,7 +91,7 @@ def get_dataset(pos_list, neg_list, data_root='data', training=True, batch_size=
         image = tf.image.decode_jpeg(image, channels=3)
         image = tf.image.resize(image, data['img_size'][:2])
         image = tf.cast(image, tf.float32)
-        image = keras.applications.densenet.preprocess_input(image)
+        image = keras.applications.efficientnet.preprocess_input(image)
         # image = tf.image.per_image_standardization(image)
         return image
 
@@ -149,33 +151,55 @@ def DenseNet49(include_top=True,
     """Instantiates the Densenet169 architecture."""
     return DenseNet([4, 4, 8, 6], include_top, weights, input_tensor, input_shape, pooling, classes)
 
-model = DenseNet49(include_top=True, weights=None, input_shape=data['img_size'], classes=2)
-# model = keras.applications.DenseNet121(include_top=True, weights=None, classes=10, input_shape=data['img_size'])
+# model = DenseNet49(include_top=True, weights=None, input_shape=data['img_size'], classes=2)
+model = keras.applications.EfficientNetB0(include_top=True, weights=None, classes=2, input_shape=data['img_size'])
 
-max_epochs = 20
-swSyncInterval = steps_per_epoch
-min_peers = 2
-model_name = 'EfficientNetB2-DeepSense'
+model_name = 'EfficientNetB0-DeepSense'
+if SWARM_LEARNING:
+    model_name += '-SL-{0}'.format(os.getenv('SLNUM'))
+
 model.compile(
     optimizer='adam',
     loss='categorical_crossentropy',
     metrics=[
         'accuracy',
-        *[tf.keras.metrics.Recall(name='{0}-Recall'.format(x), class_id=x) for x in range(2)],
-        *[tf.keras.metrics.Precision(name='{0}-Precision'.format(x), class_id=x) for x in range(2)]]
+        *[keras.metrics.Recall(name='{0}-Recall'.format(x), class_id=x) for x in range(2)],
+        *[keras.metrics.Precision(name='{0}-Precision'.format(x), class_id=x) for x in range(2)]]
 )
 
 
 # In[10]:
 
-swarmCallback = SwarmCallback(
-    sync_interval=swSyncInterval,
-    min_peers=min_peers,
-    val_data=val_dataset,
-    val_batch_size=BATCH_SIZE,
-    model_name=model_name,
-    use_adaptive_sync=False
-)
+
+try:
+    os.mkdir('./saved_models')
+    os.mkdir('./saved_models/' + datetime.now().strftime("%Y%m%d-%H%M%S"))
+except:
+    pass
+
+callbacks=[
+    keras.callbacks.ModelCheckpoint('saved_models/' + datetime.now().strftime("%Y%m%d-%H%M%S") + '/enetv2b0-{epoch:02d}.hdf5'),
+    keras.callbacks.TensorBoard(
+        log_dir="logs/profile/" + datetime.now().strftime("%Y%m%d-%H%M%S"),
+        profile_batch=3
+    )
+]
+
+if SWARM_LEARNING:
+    swSyncInterval = steps_per_epoch
+    min_peers = 2
+    from swarm import SwarmCallback
+    swarmCallback = SwarmCallback(
+        sync_interval=swSyncInterval,
+        min_peers=min_peers,
+        val_data=val_dataset,
+        val_batch_size=BATCH_SIZE,
+        model_name=model_name,
+        use_adaptive_sync=False
+    )
+    callbacks.append(swarmCallback)
+
+max_epochs = 10
 
 model.fit(
     train_dataset,
@@ -183,14 +207,7 @@ model.fit(
     validation_data=val_dataset,
     validation_freq=1,
     steps_per_epoch=steps_per_epoch,
-    callbacks=[swarmCallback]
+    callbacks=callbacks
 )
 
-model.save('enetv2.h5')
-
-
-# In[ ]:
-
-
-
-
+# model.save('enetv2.h5') 

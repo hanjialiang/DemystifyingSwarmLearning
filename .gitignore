@@ -9,3 +9,4 @@ DeepSense/model
 UBDTR
 swarm-learning
 *.pyc
+*.tfevents*
