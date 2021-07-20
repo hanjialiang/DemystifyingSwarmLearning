@@ -1,6 +1,6 @@
 # SwarmSense
 
-## SwarmUpdating: Optimization of Swarm Edge Node Updating Strategies for Swarm Learning
+## SwarmUpdating: Calibration of Node Updating Strategies for Swarm Learning
 
 ## Background
 
