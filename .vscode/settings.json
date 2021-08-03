@@ -1,0 +1,19 @@
+{
+    "jupyter.jupyterServerType": "remote",
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "DeepSense/data": true,
+        "DeepSense/data_raw": true,
+        "ImageNet-LT/data/train": true,
+        "ImageNet-LT/data/test": true,
+        "ImageNet-LT/data/val": true,
+        "ImageNet-LT/data/open": true,
+        "*.hdf5": true,
+        "DeepSense/logs/*": true,
+        "DeepSense/saved_models/*": true
+    }
+}
