@@ -39,11 +39,10 @@ Swarm Learning (SL) is a newly emerging distributed machine learning paradigm fo
 ## RQ1 What's the performance of SL?
 
 1. Accuracy
-2. Time consuming
 3. Computation resource consuming
 4. Communication overhead (optional)
 
-## RQ2 What's the applicability of SL?
+## RQ2 What's the applicability of SL? (optional)
 
 1. Does SL support most mainstream neural network structures?
 2. Does SL support most mainstream ML platform and GPU accelerator?
