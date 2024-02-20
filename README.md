@@ -1,65 +1,10 @@
-# SwarmSense
+# DemystifyingSwarmLearning
 
-## SwarmUpdating: Calibration of Node Updating Strategies for Swarm Learning
+This repository contains code for the paper Demystifying Swarm Learning: An Emerging Decentralized Federated Learning System.
 
-## Background
-
-+ Existing Swarm Learning (SL) frameworks update all SL nodes uniformly, with little consideration of the individualized or differentiated requirements of the nodes, such as medical images of different races, chip images of different batches of different industries, or mainstream product categories of different e-commerce platforms.
-+ Existing SL frameworks cannot predict unbalanced labels effectively.
-
-### Approach
-
-+ **Local node enhanced calibration**: introduce the delta of the gradient of the current node into the process of gradient update for calibration
-+ **Neighbor node enhanced up-sampling**: introduce the delta of the gradient of the minority class of neighbor nodes into the process of gradient update for up-sampling
-  - Different from up-sampling from simulated data, better performance in theory
-
-### Evaluation
-
-+ Because we cannot acquire the core code of updating strategy of [Swarm Learning](https://github.com/HewlettPackard/swarm-learning), we simulate the experimental results in a distributed machine learning manner.
-  - Expect to achieve similar accuracy to that of SL
-+ Dataset: Sense++
-
-## An Empirical Study of Swarm Learning
-
-## Background
-
-Swarm Learning (SL) is a newly emerging distributed machine learning paradigm for decentralized, privacy-preserving, secure, *p2p* machine learning, without a central coordinator. There lacks a comprehensive study on performance, applicability, and challenges of SL.
+Federated learning (FL) is a privacy-preserving deep learning paradigm. An important type of FL is cross-silo FL, which enables a moderate number of organizations to cooperatively train a shared model while keeping private data locally and aggregating parameters on a central parameter server. However, the central server may be vulnerable to malicious attacks or software failures. To address this problem, Swarm Learning (SL) has emerged to perform FL in a decentralized manner by introducing a blockchain to securely onboard members and dynamically elect the leader for parameter aggregation. Despite tremendous attention to SL recently, few measurement studies provide comprehensive knowledge of best practices and precautions for deploying SL in real-world scenarios. To this end, we conduct the *first* empirical study of SL, to fill the knowledge gap between SL research and real-world deployment. We conduct various experiments on 3 public datasets for 4 research questions, present interesting findings, quantitatively analyze the reasons behind these findings, and provide developers and researchers with practical suggestions. The findings have evidenced that SL is supposed to be suitable for most application scenarios, even when the dataset is unbalanced or polluted. However, some SL edge nodes consume much more network bandwidth than others, leading to unfairness among participants.
 
 ## Dataset
-
-+ Sense++
-+ [User behavior](https://tianchi.aliyun.com/dataset/dataDetail?dataId=649)
 + [NIH chest X-ray](https://www.kaggle.com/nih-chest-xrays/data)
-+ [Places-365](http://places2.csail.mit.edu/)
-+ [ImageNet-2012](http://www.image-net.org/)
-+ [Places-LT](https://liuziwei7.github.io/projects/LongTail.html)
-+ [ImageNet-LT](https://liuziwei7.github.io/projects/LongTail.html)
-+ [iNaturalist-2021](https://github.com/visipedia/inat_comp/tree/master/2021)
-
-## RQ1 What's the performance of SL?
-
-1. Accuracy
-3. Computation resource consuming
-4. Communication overhead (optional)
-
-## RQ2 What's the applicability of SL? (optional)
-
-1. Does SL support most mainstream neural network structures?
-2. Does SL support most mainstream ML platform and GPU accelerator?
-3. Does SL support customized neural network modules or optimization methods?
-
-## RQ3 Are there any challenges in SL?
-
-1. Unbalanced labeled classes in each node
-2. Unbalanced samples among swarm nodes
-3. Individualized or differentiated requirements of edge nodes
-4. Affect of evil nodes
-
-
-
-
-
-
-
-
-
++ [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html)
++ [IMDB](http://ai.stanford.edu/~amaas/data/sentiment/)
