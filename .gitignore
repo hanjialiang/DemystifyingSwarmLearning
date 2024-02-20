@@ -29,3 +29,10 @@ DeepSense/DenseNet49-Sense++-baseline
 DeepSense/enetv2
 ImageNet-LT/logs
 ImageNet-LT/saved_models
+*.pkl
+*.pickle
+*.npz
+*.so
+newNIH/saved/
+IMDB/swarmml/autopassj
+*.txt
