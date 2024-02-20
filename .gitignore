@@ -1,3 +1,6 @@
+*.pb
+*.gz
+*.json
 **/data
 __pycache__
 .ipynb_checkpoints
