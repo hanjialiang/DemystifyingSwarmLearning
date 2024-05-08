@@ -8,6 +8,3 @@ Federated learning (FL) is a privacy-preserving deep learning paradigm. An impor
 + [NIH chest X-ray](https://www.kaggle.com/nih-chest-xrays/data)
 + [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html)
 + [IMDB](http://ai.stanford.edu/~amaas/data/sentiment/)
-
-## Usage
-Please refer to xxx.
